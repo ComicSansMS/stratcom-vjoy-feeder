@@ -61,10 +61,16 @@ int main(int /* argc */, char* /* argv */[])
         return 4;
     }
 
-    stratcom_set_led_blink_interval(stratcom, 50, 50);
-    stratcom_set_button_led_state(stratcom, STRATCOM_LEDBUTTON_ALL, STRATCOM_LED_OFF);
+    auto check = [](stratcom_return ret) {
+        if(ret != STRATCOM_RET_SUCCESS) {
+            std::cerr << "Error interacting with Strategic Commander device." << std::endl;
+            std::exit(5);
+        }
+    };
 
-    stratcom_read_input(stratcom);
+    check(stratcom_set_button_led_state(stratcom, STRATCOM_LEDBUTTON_ALL, STRATCOM_LED_OFF));
+
+    check(stratcom_read_input(stratcom));
     stratcom_input_state old_input_state = stratcom_get_input_state(stratcom);
 
     SetAxis(0x4000, rId, HID_USAGE_X);
@@ -77,7 +83,7 @@ int main(int /* argc */, char* /* argv */[])
     bool quitRequested = false;
     while(!quitRequested)
     {
-        stratcom_read_input(stratcom);
+        check(stratcom_read_input(stratcom));
         stratcom_input_state current_input_state = stratcom_get_input_state(stratcom);
         auto input_events = stratcom_create_input_events_from_states(&old_input_state, &current_input_state);
 
