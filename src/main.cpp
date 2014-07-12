@@ -7,7 +7,6 @@
 #include <vjoyinterface.h>
 #include <stratcom.h>
 
-
 #include <iostream>
 
 UINT enumerateVJDevices()
@@ -16,7 +15,7 @@ UINT enumerateVJDevices()
     for(UINT rId = 1; rId <= 16; ++rId)
     {
         if(GetVJDStatus(rId) == VJD_STAT_FREE) {
-            if(GetVJDButtonNumber(rId) < 11) {
+            if(GetVJDButtonNumber(rId) < 32) {
                 continue;
             }
             if(!GetVJDAxisExist(rId, HID_USAGE_X)) {
@@ -73,9 +72,7 @@ int main(int /* argc */, char* /* argv */[])
     check(stratcom_read_input(stratcom));
     stratcom_input_state old_input_state = stratcom_get_input_state(stratcom);
 
-    SetAxis(0x4000, rId, HID_USAGE_X);
-    SetAxis(0x4000, rId, HID_USAGE_Y);
-    SetAxis(0x4000, rId, HID_USAGE_Z);
+    ResetVJD(rId);
 
     std::cout << "Up and running. Press REC button on the Strategic Commander to quit." << std::endl;
 
@@ -136,7 +133,12 @@ int main(int /* argc */, char* /* argv */[])
             case STRATCOM_INPUT_EVENT_SLIDER:
                 {
                     auto const& slider = it->desc.slider;
-                    slider;
+                    switch(slider.status) {
+                    case STRATCOM_SLIDER_1: button_offset = 0;  break;
+                    case STRATCOM_SLIDER_2: button_offset = 11; break;
+                    case STRATCOM_SLIDER_3: button_offset = 22; break;
+                    }
+                    ResetButtons(rId);
                 } break;
             case STRATCOM_INPUT_EVENT_AXIS:
                 {
@@ -161,6 +163,8 @@ int main(int /* argc */, char* /* argv */[])
     }
 
     std::cout << "Exit requested." << std::endl;
+
+    ResetVJD(rId);
 
     RelinquishVJD(rId);
 
