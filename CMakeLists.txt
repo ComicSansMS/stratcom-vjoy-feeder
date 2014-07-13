@@ -25,6 +25,7 @@ if(WIN32)
     list(APPEND CMAKE_PREFIX_PATH ${QT5_BASE_DIR} ${WINSDK_LIB_DIR})
 endif()
 find_package(Qt5Widgets)
+find_package(Qt5WinExtras)
 
 set(STRATCOM_VJOY_SOURCE_FILES
     ${PROJECT_SOURCE_DIR}/src/main.cpp
@@ -49,6 +50,14 @@ set(STRATCOM_VJOY_QT_MOC_HEADER_FILES
 )
 qt5_wrap_cpp(STRATCOM_VJOY_QT_MOC_SOURCE_FILES ${STRATCOM_VJOY_QT_MOC_HEADER_FILES})
 
+set(STRATCOM_VJOY_RESOURCE_DIRECTORY ${PROJECT_SOURCE_DIR}/gfx)
+set(STRATCOM_VJOY_RESOURCE_FILES
+    ${STRATCOM_VJOY_RESOURCE_DIRECTORY}/Resource.rc
+)
+set(STRATCOM_VJOY_RESOURCE_HEADER_FILES
+    ${STRATCOM_VJOY_RESOURCE_DIRECTORY}/resource.h
+)
+
 source_group(includes FILES
     ${STRATCOM_VJOY_HEADER_FILES}
     ${STRATCOM_VJOY_QT_HEADER_FILES}
@@ -58,6 +67,10 @@ source_group(moc FILES
     ${STRATCOM_VJOY_QT_MOC_SOURCE_FILES}
 )
 
+source_group(resource FILES
+    ${STRATCOM_VJOY_RESOURCE_FILES}
+    ${STRATCOM_VJOY_RESOURCE_HEADER_FILES}
+)
 
 add_executable(stratcom-vjoy WIN32
     ${STRATCOM_VJOY_SOURCE_FILES}
@@ -66,9 +79,11 @@ add_executable(stratcom-vjoy WIN32
     ${STRATCOM_VJOY_QT_HEADER_FILES}
     ${STRATCOM_VJOY_QT_MOC_HEADER_FILES}
     ${STRATCOM_VJOY_QT_MOC_SOURCE_FILES}
+    ${STRATCOM_VJOY_RESOURCE_FILES}
+    ${STRATCOM_VJOY_RESOURCE_HEADER_FILES}
 )
-target_include_directories(stratcom-vjoy PUBLIC ${VJOY_INCLUDE_DIRECTORIES})
-target_link_libraries(stratcom-vjoy PUBLIC stratcom ${VJOY_LIBRARIES} Qt5::Widgets)
+target_include_directories(stratcom-vjoy PUBLIC ${VJOY_INCLUDE_DIRECTORIES} ${STRATCOM_VJOY_RESOURCE_DIRECTORY})
+target_link_libraries(stratcom-vjoy PUBLIC stratcom ${VJOY_LIBRARIES} Qt5::Widgets Qt5::WinExtras)
 target_compile_options(stratcom-vjoy PUBLIC "/W4")
 
 if(WIN32)
@@ -80,5 +95,6 @@ if(WIN32)
     file(COPY ${VJOY_DLLS} DESTINATION ${PROJECT_BINARY_DIR})
     
     getQt5Dlls(Qt5::Widgets qt_DLLS)
+    getQt5Dlls(Qt5::WinExtras qt_DLLS)
     file(COPY ${qt_DLLS} ${QT5_ADDITIONAL_DLLS} DESTINATION ${PROJECT_BINARY_DIR})
 endif()
