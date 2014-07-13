@@ -3,14 +3,13 @@
 
 #include <thread>
 
-#include "Barrier.hpp"
 #include "EventProcessor.hpp"
 #include "Log.hpp"
 #include "TrayIcon.hpp"
 
 #include <Windows.h>
 
-int qt_main(int argc, char* argv[], EventProcessor& event_processor, Barrier& barr)
+int qt_main(int argc, char* argv[], EventProcessor& event_processor)
 {
     QApplication theApp(argc, argv);
     TrayIcon ic(theApp);
@@ -24,7 +23,6 @@ int qt_main(int argc, char* argv[], EventProcessor& event_processor, Barrier& ba
                      &ic, &TrayIcon::onDeviceError);
     QObject::connect(&event_processor, &EventProcessor::sliderPositionChanged,
                      &ic, &TrayIcon::onSliderPositionChanged);
-    barr.signal();
     emit ic.deviceInitRequest();
     theApp.setQuitOnLastWindowClosed(false);
     return theApp.exec();
@@ -34,9 +32,8 @@ int main(int argc, char* argv[])
 {
     LoggerShutdownToken logger_guard;
     EventProcessor proc;
-    Barrier barr;
-    std::thread t1([&proc, &barr]() { barr.wait(); proc.processingLoop(); });
-    qt_main(argc, argv, proc, barr);
+    std::thread t1([&proc]() { proc.processingLoop(); });
+    qt_main(argc, argv, proc);
     t1.join();
     LOG("Shutdown completed.");
     return 0;
