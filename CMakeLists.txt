@@ -38,10 +38,12 @@ set(STRATCOM_VJOY_HEADER_FILES
 
 set(STRATCOM_VJOY_QT_SOURCE_FILES
     ${PROJECT_SOURCE_DIR}/src/EventProcessor.cpp
+    ${PROJECT_SOURCE_DIR}/src/IconProvider.cpp
     ${PROJECT_SOURCE_DIR}/src/TrayIcon.cpp
 )
 
 set(STRATCOM_VJOY_QT_HEADER_FILES
+    ${PROJECT_SOURCE_DIR}/src/IconProvider.hpp
 )
 
 set(STRATCOM_VJOY_QT_MOC_HEADER_FILES

@@ -8,7 +8,6 @@ class EventProcessor : public QObject
     Q_OBJECT
 public:
     EventProcessor(QObject* parent = nullptr);
-
     int processingLoop();
 private slots:
 };
