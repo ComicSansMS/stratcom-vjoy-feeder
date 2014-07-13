@@ -91,7 +91,7 @@ private:
                 m_logMessages.pop();
             }
             fout << str << std::endl;
-            OutputDebugStringA(str.c_str());
+            OutputDebugStringA((str + "\n").c_str());
             str.clear();
         }
     }
