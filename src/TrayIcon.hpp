@@ -16,8 +16,11 @@ public:
 private slots:
     void onQuitRequested();
     void onIconClicked();
+signals:
+    void quitRequestReceived();
 private:
     void createActions();
+    void createMenu();
 private:
     QApplication* m_theApp;
     std::unique_ptr<QMenu> m_contextMenu;

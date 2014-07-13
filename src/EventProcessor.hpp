@@ -3,13 +3,27 @@
 
 #include <QObject>
 
+#include <memory>
+
 class EventProcessor : public QObject
 {
     Q_OBJECT
 public:
+    enum class State {
+        READY,
+        PROCESSING
+    };
+private:
+    struct ProcessorImpl;
+    std::unique_ptr<ProcessorImpl> pImpl_;
+public:
     EventProcessor(QObject* parent = nullptr);
-    int processingLoop();
+    ~EventProcessor();
+    void initializeDevices();
+    void processingLoop();
+    State getState() const;
 private slots:
+    void onQuitRequested();
 };
 
 

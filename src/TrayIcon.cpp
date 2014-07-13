@@ -8,14 +8,13 @@ TrayIcon::TrayIcon(QApplication& the_app, QObject* parent)
      m_iconProvider(std::make_unique<IconProvider>())
 {
     createActions();
-    m_contextMenu->addAction(m_actionQuit);
-    setContextMenu(m_contextMenu.get());
+    createMenu();
 
     setToolTip("Stratcom VJoy-Feeder");
-
     setIcon(m_iconProvider->getIcon(IconProvider::ICON_TRAY_ERROR));
     show();
-    showMessage("Stratcom VJoy-Feeder", "Stratcom VJoy-Feeder is running.");
+
+    //showMessage("Stratcom VJoy-Feeder", "Stratcom VJoy-Feeder is running.");
 }
 
 void TrayIcon::createActions()
@@ -24,8 +23,15 @@ void TrayIcon::createActions()
     connect(m_actionQuit, SIGNAL(triggered()), this, SLOT(onQuitRequested()));
 }
 
+void TrayIcon::createMenu()
+{
+    m_contextMenu->addAction(m_actionQuit);
+    setContextMenu(m_contextMenu.get());
+}
+
 void TrayIcon::onQuitRequested()
 {
+    emit quitRequestReceived();
     m_theApp->quit();
 }
 
