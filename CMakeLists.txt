@@ -33,6 +33,7 @@ set(STRATCOM_VJOY_SOURCE_FILES
 )
 
 set(STRATCOM_VJOY_HEADER_FILES
+    ${PROJECT_SOURCE_DIR}/src/Barrier.hpp
     ${PROJECT_SOURCE_DIR}/src/Log.hpp
 )
 

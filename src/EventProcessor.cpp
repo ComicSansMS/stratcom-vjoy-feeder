@@ -1,5 +1,6 @@
 #include "EventProcessor.hpp"
 
+#include "Barrier.hpp"
 #include "Log.hpp"
 
 #define WIN32_LEAN_AND_MEAN
@@ -47,6 +48,7 @@ struct EventProcessor::ProcessorImpl
     UINT rId;
     std::atomic<bool> quit_requested;
     EventProcessor* parent;
+    Barrier device_error_barrier;
 
     ProcessorImpl(EventProcessor*);
     ~ProcessorImpl();
@@ -241,21 +243,38 @@ EventProcessor::~EventProcessor()
 
 void EventProcessor::initializeDevices()
 {
-    pImpl_->initializeStratcom();
-    pImpl_->initializeVJoy();
-    emit deviceInitializedSuccessfully();
+    for(;;) {
+        pImpl_->device_error_barrier.wait();
+        if(pImpl_->quit_requested.load()) {
+            break;
+        }
+        pImpl_->device_error_barrier.reset();
+        if(pImpl_->initializeStratcom() && pImpl_->initializeVJoy()) {
+            emit deviceInitializedSuccessfully();
+            return;
+        }
+        emit deviceError();
+    }
 }
 
 void EventProcessor::processingLoop()
 {
-    initializeDevices();
-    pImpl_->processInputEvents();
+    while(!pImpl_->quit_requested.load()) {
+        initializeDevices();
+        pImpl_->processInputEvents();
+    }
 }
 
 void EventProcessor::onQuitRequested()
 {
     LOG("Exit requested.");
     pImpl_->requestTerminationProcessLoop();
+    pImpl_->device_error_barrier.signal();
+}
+
+void EventProcessor::onDeviceInitRequested()
+{
+    pImpl_->device_error_barrier.signal();
 }
 
 EventProcessor::State EventProcessor::getState() const

@@ -21,6 +21,7 @@ public slots:
     void onSliderPositionChanged(int new_position);
 signals:
     void quitRequestReceived();
+    void deviceInitRequest();
 private:
     void createActions();
     void createMenu();

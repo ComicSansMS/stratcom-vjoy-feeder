@@ -24,6 +24,7 @@ public:
     State getState() const;
 public slots:
     void onQuitRequested();
+    void onDeviceInitRequested();
 signals:
     void deviceInitializedSuccessfully();
     void deviceError();
