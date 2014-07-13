@@ -45,10 +45,10 @@ struct EventProcessor::ProcessorImpl
 {
     stratcom_device* stratcom;
     UINT rId;
-    stratcom_input_state old_input_state;
     std::atomic<bool> quit_requested;
+    EventProcessor* parent;
 
-    ProcessorImpl();
+    ProcessorImpl(EventProcessor*);
     ~ProcessorImpl();
     bool initializeStratcom();
     bool initializeVJoy();
@@ -56,8 +56,8 @@ struct EventProcessor::ProcessorImpl
     void requestTerminationProcessLoop();
 };
 
-EventProcessor::ProcessorImpl::ProcessorImpl()
-    :stratcom(nullptr), rId(0), quit_requested(false)
+EventProcessor::ProcessorImpl::ProcessorImpl(EventProcessor* n_parent)
+    :stratcom(nullptr), rId(0), quit_requested(false), parent(n_parent)
 {
     stratcom_init();
 }
@@ -87,12 +87,6 @@ bool EventProcessor::ProcessorImpl::initializeStratcom()
     if(stratcom_set_button_led_state(stratcom, STRATCOM_LEDBUTTON_ALL, STRATCOM_LED_OFF) != STRATCOM_RET_SUCCESS) {
         return false;
     }
-
-    if(stratcom_read_input(stratcom) != STRATCOM_RET_SUCCESS) {
-        return false;
-    }
-
-    old_input_state = stratcom_get_input_state(stratcom);
     return true;
 }
 
@@ -134,12 +128,11 @@ void EventProcessor::ProcessorImpl::processInputEvents()
         }
     };
 
-    check(stratcom_read_input(stratcom));
-    stratcom_input_state old_input_state = stratcom_get_input_state(stratcom);
-
     LOG("Stratcom VJoy-Feeder up and running.");
 
     UCHAR button_offset = 0;
+    stratcom_input_state old_input_state;
+    bool first_iteration = true;
     while(!quit_requested.load())
     {
         auto read_result = stratcom_read_input_with_timeout(stratcom, 500);
@@ -147,6 +140,12 @@ void EventProcessor::ProcessorImpl::processInputEvents()
 
         if(read_result != STRATCOM_RET_NO_DATA) {
             stratcom_input_state current_input_state = stratcom_get_input_state(stratcom);
+            if(first_iteration) {
+                old_input_state = current_input_state;
+                first_iteration = false;
+                emit parent->sliderPositionChanged(current_input_state.slider);
+                continue;
+            }
             auto input_events = stratcom_create_input_events_from_states(&old_input_state, &current_input_state);
 
             for(auto it = input_events; it != nullptr; it = it->next) {
@@ -203,6 +202,7 @@ void EventProcessor::ProcessorImpl::processInputEvents()
                     case STRATCOM_SLIDER_2: button_offset = 11; break;
                     case STRATCOM_SLIDER_3: button_offset = 22; break;
                     }
+                    emit parent->sliderPositionChanged(slider.status);
                     ResetButtons(rId);
                 } break;
                 case STRATCOM_INPUT_EVENT_AXIS:
@@ -231,7 +231,7 @@ void EventProcessor::ProcessorImpl::processInputEvents()
 }
 
 EventProcessor::EventProcessor(QObject* parent)
-    :QObject(parent), pImpl_(std::make_unique<EventProcessor::ProcessorImpl>())
+    :QObject(parent), pImpl_(std::make_unique<EventProcessor::ProcessorImpl>(this))
 {
 }
 
@@ -243,6 +243,7 @@ void EventProcessor::initializeDevices()
 {
     pImpl_->initializeStratcom();
     pImpl_->initializeVJoy();
+    emit deviceInitializedSuccessfully();
 }
 
 void EventProcessor::processingLoop()

@@ -11,10 +11,8 @@ TrayIcon::TrayIcon(QApplication& the_app, QObject* parent)
     createMenu();
 
     setToolTip("Stratcom VJoy-Feeder");
-    setIcon(m_iconProvider->getIcon(IconProvider::ICON_TRAY_ERROR));
+    setIcon(m_iconProvider->getIcon(IconProvider::ICON_APPLICATION));
     show();
-
-    //showMessage("Stratcom VJoy-Feeder", "Stratcom VJoy-Feeder is running.");
 }
 
 void TrayIcon::createActions()
@@ -33,6 +31,25 @@ void TrayIcon::onQuitRequested()
 {
     emit quitRequestReceived();
     m_theApp->quit();
+}
+
+void TrayIcon::onDeviceInitializedSuccessfully()
+{
+    showMessage("Stratcom VJoy-Feeder", "Stratcom VJoy-Feeder is running.");
+}
+
+void TrayIcon::onDeviceError()
+{
+    showMessage("Stratcom VJoy-Feeder", "Device error.", Warning);
+    setIcon(m_iconProvider->getIcon(IconProvider::ICON_TRAY_ERROR));
+}
+
+void TrayIcon::onSliderPositionChanged(int new_position)
+{
+    auto const new_icon = (new_position == 1) ? IconProvider::ICON_TRAY_SLIDER1 : 
+                          ((new_position == 2) ? IconProvider::ICON_TRAY_SLIDER2 :
+                          IconProvider::ICON_TRAY_SLIDER3);
+    setIcon(m_iconProvider->getIcon(new_icon));
 }
 
 void TrayIcon::onIconClicked()

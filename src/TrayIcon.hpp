@@ -13,9 +13,12 @@ class TrayIcon : public QSystemTrayIcon {
     Q_OBJECT
 public:
     TrayIcon(QApplication& the_app, QObject* parent = nullptr);
-private slots:
+public slots:
     void onQuitRequested();
     void onIconClicked();
+    void onDeviceInitializedSuccessfully();
+    void onDeviceError();
+    void onSliderPositionChanged(int new_position);
 signals:
     void quitRequestReceived();
 private:

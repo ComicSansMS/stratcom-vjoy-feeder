@@ -22,8 +22,12 @@ public:
     void initializeDevices();
     void processingLoop();
     State getState() const;
-private slots:
+public slots:
     void onQuitRequested();
+signals:
+    void deviceInitializedSuccessfully();
+    void deviceError();
+    void sliderPositionChanged(int new_position);
 };
 
 
