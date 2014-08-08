@@ -13,11 +13,14 @@
 #include <stratcom.h>
 
 #include <atomic>
+#include <tuple>
 
 namespace {
-    UINT enumerateVJDevices()
+    std::tuple<UINT, UINT, UINT> enumerateVJDevices()
     {
-        UINT ret = 0;
+        UINT first = 0;
+        UINT second = 0;
+        UINT third = 0;
         for(UINT rId = 1; rId <= 16; ++rId)
         {
             if(GetVJDStatus(rId) == VJD_STAT_FREE) {
@@ -34,18 +37,48 @@ namespace {
                     continue;
                 }
                 LOG("Suitable device found at vJoy rId " << rId);
-                ret = rId;
+                first = rId;
                 break;
             }
         }
-        return ret;
+        for(UINT rId = 1; rId <= 16; ++rId)
+        {
+            if(GetVJDStatus(rId) == VJD_STAT_FREE) {
+                if(GetVJDButtonNumber(rId) < 32) {
+                    continue;
+                }
+                if(rId == first) {
+                    continue;
+                }
+                LOG("Suitable secondary device found at vJoy rId " << rId);
+                second = rId;
+                break;
+            }
+        }
+        for(UINT rId = 1; rId <= 16; ++rId)
+        {
+            if(GetVJDStatus(rId) == VJD_STAT_FREE) {
+                if(GetVJDButtonNumber(rId) < 32) {
+                    continue;
+                }
+                if((rId == first) || (rId == second)) {
+                    continue;
+                }
+                LOG("Suitable ternary device found at vJoy rId " << rId);
+                third = rId;
+                break;
+            }
+        }
+        return std::make_tuple(first, second, third);
     }
 }
 
 struct EventProcessor::ProcessorImpl
 {
     stratcom_device* stratcom;
-    UINT rId;
+    UINT rId1;
+    UINT rId2;
+    UINT rId3;
     std::atomic<bool> quit_requested;
     EventProcessor* parent;
     Barrier device_error_barrier;
@@ -59,16 +92,24 @@ struct EventProcessor::ProcessorImpl
 };
 
 EventProcessor::ProcessorImpl::ProcessorImpl(EventProcessor* n_parent)
-    :stratcom(nullptr), rId(0), quit_requested(false), parent(n_parent)
+    :stratcom(nullptr), rId1(0), rId2(0), rId3(0), quit_requested(false), parent(n_parent)
 {
     stratcom_init();
 }
 
 EventProcessor::ProcessorImpl::~ProcessorImpl()
 {
-    if(rId) {
-        ResetVJD(rId);
-        RelinquishVJD(rId);
+    if(rId1) {
+        ResetVJD(rId1);
+        RelinquishVJD(rId1);
+    }
+    if(rId2) {
+        ResetVJD(rId2);
+        RelinquishVJD(rId2);
+    }
+    if(rId3) {
+        ResetVJD(rId3);
+        RelinquishVJD(rId3);
     }
 
     if(stratcom) {
@@ -99,19 +140,30 @@ bool EventProcessor::ProcessorImpl::initializeVJoy()
         return false;
     }
 
-    rId = enumerateVJDevices();
-    if(!rId) {
+    std::tie(rId1, rId2, rId3) = enumerateVJDevices();
+    if(!rId1) {
         LOG("No suitable vJoy device found.");
         return false;
     }
 
-    if(!AcquireVJD(rId)) {
-        LOG("Could not acquire vJoy device for writing.");
+    if(!AcquireVJD(rId1)) {
+        LOG("Could not acquire primary vJoy device for writing.");
+        return false;
+    }
+    if(!ResetVJD(rId1)) {
+        LOG("Could not write to primary vJoy device.");
         return false;
     }
 
-    if(!ResetVJD(rId)) {
-        return false;
+    if(rId2) {
+        if(!AcquireVJD(rId2) || !ResetVJD(rId2)) {
+            LOG("Could not write to secondary vJoy device.");
+        }
+    }
+    if(rId3) {
+        if(!AcquireVJD(rId3) || !ResetVJD(rId3)) {
+            LOG("Could not write to ternary vJoy device.");
+        }
     }
     return true;
 }
@@ -133,6 +185,7 @@ void EventProcessor::ProcessorImpl::processInputEvents()
     LOG("Stratcom VJoy-Feeder up and running.");
 
     UCHAR button_offset = 0;
+    UINT target_device = rId1;
     stratcom_input_state old_input_state;
     bool first_iteration = true;
     while(!quit_requested.load())
@@ -157,37 +210,37 @@ void EventProcessor::ProcessorImpl::processInputEvents()
                     auto const& button = it->desc.button;
                     switch(button.button) {
                     case STRATCOM_BUTTON_1:
-                        SetBtn(button.status, rId, 1 + button_offset);
+                        SetBtn(button.status, target_device, 1 + button_offset);
                         break;
                     case STRATCOM_BUTTON_2:
-                        SetBtn(button.status, rId, 2 + button_offset);
+                        SetBtn(button.status, target_device, 2 + button_offset);
                         break;
                     case STRATCOM_BUTTON_3:
-                        SetBtn(button.status, rId, 3 + button_offset);
+                        SetBtn(button.status, target_device, 3 + button_offset);
                         break;
                     case STRATCOM_BUTTON_4:
-                        SetBtn(button.status, rId, 4 + button_offset);
+                        SetBtn(button.status, target_device, 4 + button_offset);
                         break;
                     case STRATCOM_BUTTON_5:
-                        SetBtn(button.status, rId, 5 + button_offset);
+                        SetBtn(button.status, target_device, 5 + button_offset);
                         break;
                     case STRATCOM_BUTTON_6:
-                        SetBtn(button.status, rId, 6 + button_offset);
+                        SetBtn(button.status, target_device, 6 + button_offset);
                         break;
                     case STRATCOM_BUTTON_PLUS:
-                        SetBtn(button.status, rId, 7 + button_offset);
+                        SetBtn(button.status, target_device, 7 + button_offset);
                         break;
                     case STRATCOM_BUTTON_MINUS:
-                        SetBtn(button.status, rId, 8 + button_offset);
+                        SetBtn(button.status, target_device, 8 + button_offset);
                         break;
                     case STRATCOM_BUTTON_SHIFT1:
-                        SetBtn(button.status, rId, 9 + button_offset);
+                        SetBtn(button.status, target_device, 9 + button_offset);
                         break;
                     case STRATCOM_BUTTON_SHIFT2:
-                        SetBtn(button.status, rId, 10 + button_offset);
+                        SetBtn(button.status, target_device, 10 + button_offset);
                         break;
                     case STRATCOM_BUTTON_SHIFT3:
-                        SetBtn(button.status, rId, 11 + button_offset);
+                        SetBtn(button.status, target_device, 11 + button_offset);
                         break;
                     case STRATCOM_BUTTON_REC:
                         // does nothing
@@ -200,12 +253,14 @@ void EventProcessor::ProcessorImpl::processInputEvents()
                 {
                     auto const& slider = it->desc.slider;
                     switch(slider.status) {
-                    case STRATCOM_SLIDER_1: button_offset = 0;  break;
-                    case STRATCOM_SLIDER_2: button_offset = 11; break;
-                    case STRATCOM_SLIDER_3: button_offset = 22; break;
+                    case STRATCOM_SLIDER_1: target_device = rId1;  break;
+                    case STRATCOM_SLIDER_2: if(rId2) { target_device = rId2; } break;
+                    case STRATCOM_SLIDER_3: if(rId3) { target_device = rId3; } break;
                     }
                     emit parent->sliderPositionChanged(slider.status);
-                    ResetButtons(rId);
+                    ResetButtons(rId1);
+                    if(rId2) { ResetButtons(rId2); }
+                    if(rId3) { ResetButtons(rId3); }
                 } break;
                 case STRATCOM_INPUT_EVENT_AXIS:
                 {
@@ -213,13 +268,13 @@ void EventProcessor::ProcessorImpl::processInputEvents()
                     LONG axis_value = (axis.status + 512) * 32;
                     switch(axis.axis) {
                     case STRATCOM_AXIS_X:
-                        SetAxis(axis_value, rId, HID_USAGE_X);
+                        SetAxis(axis_value, rId1, HID_USAGE_X);
                         break;
                     case STRATCOM_AXIS_Y:
-                        SetAxis(axis_value, rId, HID_USAGE_Y);
+                        SetAxis(axis_value, rId1, HID_USAGE_Y);
                         break;
                     case STRATCOM_AXIS_Z:
-                        SetAxis(axis_value, rId, HID_USAGE_Z);
+                        SetAxis(axis_value, rId1, HID_USAGE_Z);
                         break;
                     }
                 } break;
