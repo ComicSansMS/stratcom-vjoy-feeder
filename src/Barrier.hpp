@@ -19,6 +19,12 @@ public:
         std::unique_lock<std::mutex> lk(m_mutex);
         m_condvar.wait(lk, [this]() { return m_doContinue; });
     }
+    template<class Rep, class Period>
+    bool wait_for(std::chrono::duration<Rep, Period> const& wait_time)
+    {
+        std::unique_lock<std::mutex> lk(m_mutex);
+        return m_condvar.wait_for(lk, wait_time, [this]() { return m_doContinue; });
+    }
     void signal()
     {
         std::unique_lock<std::mutex> lk(m_mutex);

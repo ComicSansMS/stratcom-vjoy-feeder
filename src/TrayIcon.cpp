@@ -49,6 +49,12 @@ void TrayIcon::setOptionShiftPlusMinus(bool doShiftPlusMinus)
     emit optionShiftPlusMinus(doShiftPlusMinus);
 }
 
+void TrayIcon::onRetryDeviceInit()
+{
+    m_actionRetryDeviceInit->setEnabled(false);
+    emit deviceInitRequest();
+}
+
 void TrayIcon::createActions()
 {
     m_actionQuit = new QAction("Quit", this);
@@ -64,10 +70,17 @@ void TrayIcon::createActions()
     m_actionShiftPlusMinus->setChecked(false);
     m_actionShiftPlusMinus->setEnabled(false);
     connect(m_actionShiftPlusMinus, &QAction::toggled, this, &TrayIcon::setOptionShiftPlusMinus);
+
+    m_actionRetryDeviceInit = new QAction("Retry Device Initialization", this);
+    m_actionRetryDeviceInit->setEnabled(false);
+    m_actionRetryDeviceInit->setVisible(false);
+    connect(m_actionRetryDeviceInit, &QAction::triggered, this, &TrayIcon::onRetryDeviceInit);
 }
 
 void TrayIcon::createMenu()
 {
+    m_contextMenu->addAction(m_actionRetryDeviceInit);
+    m_contextMenu->addSeparator();
     m_contextMenu->addAction(m_actionShiftButtons);
     m_contextMenu->addAction(m_actionShiftPlusMinus);
     m_contextMenu->addSeparator();
@@ -84,11 +97,20 @@ void TrayIcon::onQuitRequested()
 void TrayIcon::onDeviceInitializedSuccessfully()
 {
     showMessage("Stratcom VJoy-Feeder", "Stratcom VJoy-Feeder is running.");
+    m_actionRetryDeviceInit->setEnabled(false);
+    m_actionRetryDeviceInit->setVisible(false);
+    m_actionShiftButtons->setVisible(true);
+    m_actionShiftPlusMinus->setVisible(true);
+    setIcon(m_iconProvider->getIcon(IconProvider::ICON_APPLICATION));
 }
 
 void TrayIcon::onDeviceError()
 {
     showMessage("Stratcom VJoy-Feeder", "Device error.", Warning);
+    m_actionShiftButtons->setVisible(false);
+    m_actionShiftPlusMinus->setVisible(false);
+    m_actionRetryDeviceInit->setEnabled(true);
+    m_actionRetryDeviceInit->setVisible(true);
     setIcon(m_iconProvider->getIcon(IconProvider::ICON_TRAY_ERROR));
 }
 

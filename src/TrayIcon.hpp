@@ -24,6 +24,7 @@ public slots:
     void toggleOverlayDisplay(bool doShow);
     void setOptionShiftedButtons(bool doShiftedButtons);
     void setOptionShiftPlusMinus(bool doShiftPlusMinus);
+    void onRetryDeviceInit();
 signals:
     void quitRequestReceived();
     void deviceInitRequest();
@@ -38,6 +39,7 @@ private:
     QAction* m_actionQuit;
     QAction* m_actionShiftButtons;
     QAction* m_actionShiftPlusMinus;
+    QAction* m_actionRetryDeviceInit;
     QWidget* m_overlayWidget;
     std::unique_ptr<IconProvider> m_iconProvider;
 };

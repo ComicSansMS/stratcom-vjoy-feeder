@@ -13,6 +13,7 @@
 #include <stratcom.h>
 
 #include <atomic>
+#include <chrono>
 #include <tuple>
 
 namespace {
@@ -78,8 +79,11 @@ struct Config_T {
     std::atomic<bool> shiftPlusMinus;
     UINT vjdDeviceRangeFirst;
     UINT vjdDeviceRangeLast;
+    std::atomic<bool> automaticRetryOnDeviceFailure;
+    std::chrono::milliseconds deviceRetryTimeout;
     Config_T()
-        :shiftedButtons(false), shiftPlusMinus(false), vjdDeviceRangeFirst(1), vjdDeviceRangeLast(16)
+        :shiftedButtons(false), shiftPlusMinus(false), vjdDeviceRangeFirst(1), vjdDeviceRangeLast(16),
+         automaticRetryOnDeviceFailure(false), deviceRetryTimeout(2000)
     {}
 };
 
@@ -139,6 +143,8 @@ bool EventProcessor::ProcessorImpl::initializeStratcom()
     }
 
     if(stratcom_set_button_led_state(stratcom, STRATCOM_LEDBUTTON_ALL, STRATCOM_LED_OFF) != STRATCOM_RET_SUCCESS) {
+        stratcom_close_device(stratcom);
+        stratcom = nullptr;
         return false;
     }
     return true;
@@ -154,26 +160,34 @@ bool EventProcessor::ProcessorImpl::initializeVJoy()
     std::tie(rId1, rId2, rId3) = enumerateVJDevices(config.vjdDeviceRangeFirst, config.vjdDeviceRangeLast);
     if(!rId1) {
         LOG("No suitable vJoy device found.");
+        rId1 = rId2 = rId3 = 0;
         return false;
     }
 
     if(!AcquireVJD(rId1)) {
         LOG("Could not acquire primary vJoy device for writing.");
+        rId1 = rId2 = rId3 = 0;
         return false;
     }
     if(!ResetVJD(rId1)) {
         LOG("Could not write to primary vJoy device.");
+        RelinquishVJD(rId1);
+        rId1 = rId2 = rId3 = 0;
         return false;
     }
 
     if(rId2) {
         if(!AcquireVJD(rId2) || !ResetVJD(rId2)) {
             LOG("Could not write to secondary vJoy device.");
+            RelinquishVJD(rId2);
+            rId2 = 0;
         }
     }
     if(rId3) {
         if(!AcquireVJD(rId3) || !ResetVJD(rId3)) {
             LOG("Could not write to ternary vJoy device.");
+            RelinquishVJD(rId3);
+            rId3 = 0;
         }
     }
     return true;
@@ -328,7 +342,10 @@ EventProcessor::~EventProcessor()
 void EventProcessor::initializeDevices()
 {
     for(;;) {
-        pImpl_->device_error_barrier.wait();
+        bool const retryWasRequested =
+            (pImpl_->config.automaticRetryOnDeviceFailure ?
+             pImpl_->device_error_barrier.wait_for(pImpl_->config.deviceRetryTimeout) :
+             (pImpl_->device_error_barrier.wait(), true));
         if(pImpl_->quit_requested.load()) {
             break;
         }
@@ -337,7 +354,9 @@ void EventProcessor::initializeDevices()
             emit deviceInitializedSuccessfully();
             return;
         }
-        emit deviceError();
+        if(retryWasRequested) {
+            emit deviceError();
+        }
     }
 }
 
