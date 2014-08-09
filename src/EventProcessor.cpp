@@ -16,12 +16,12 @@
 #include <tuple>
 
 namespace {
-    std::tuple<UINT, UINT, UINT> enumerateVJDevices()
+    std::tuple<UINT, UINT, UINT> enumerateVJDevices(UINT range_first, UINT range_last)
     {
         UINT first = 0;
         UINT second = 0;
         UINT third = 0;
-        for(UINT rId = 1; rId <= 16; ++rId)
+        for(UINT rId = range_first; rId <= range_last; ++rId)
         {
             if(GetVJDStatus(rId) == VJD_STAT_FREE) {
                 if(GetVJDButtonNumber(rId) < 32) {
@@ -41,7 +41,7 @@ namespace {
                 break;
             }
         }
-        for(UINT rId = 1; rId <= 16; ++rId)
+        for(UINT rId = range_first; rId <= range_last; ++rId)
         {
             if(GetVJDStatus(rId) == VJD_STAT_FREE) {
                 if(GetVJDButtonNumber(rId) < 32) {
@@ -55,7 +55,7 @@ namespace {
                 break;
             }
         }
-        for(UINT rId = 1; rId <= 16; ++rId)
+        for(UINT rId = range_first; rId <= range_last; ++rId)
         {
             if(GetVJDStatus(rId) == VJD_STAT_FREE) {
                 if(GetVJDButtonNumber(rId) < 32) {
@@ -73,6 +73,16 @@ namespace {
     }
 }
 
+struct Config_T {
+    std::atomic<bool> shiftedButtons;
+    std::atomic<bool> shiftPlusMinus;
+    UINT vjdDeviceRangeFirst;
+    UINT vjdDeviceRangeLast;
+    Config_T()
+        :shiftedButtons(false), shiftPlusMinus(false), vjdDeviceRangeFirst(1), vjdDeviceRangeLast(16)
+    {}
+};
+
 struct EventProcessor::ProcessorImpl
 {
     stratcom_device* stratcom;
@@ -82,6 +92,7 @@ struct EventProcessor::ProcessorImpl
     std::atomic<bool> quit_requested;
     EventProcessor* parent;
     Barrier device_error_barrier;
+    Config_T config;
 
     ProcessorImpl(EventProcessor*);
     ~ProcessorImpl();
@@ -140,7 +151,7 @@ bool EventProcessor::ProcessorImpl::initializeVJoy()
         return false;
     }
 
-    std::tie(rId1, rId2, rId3) = enumerateVJDevices();
+    std::tie(rId1, rId2, rId3) = enumerateVJDevices(config.vjdDeviceRangeFirst, config.vjdDeviceRangeLast);
     if(!rId1) {
         LOG("No suitable vJoy device found.");
         return false;
@@ -228,22 +239,40 @@ void EventProcessor::ProcessorImpl::processInputEvents()
                         SetBtn(button.status, target_device, 6 + button_offset);
                         break;
                     case STRATCOM_BUTTON_PLUS:
-                        SetBtn(button.status, target_device, 7 + button_offset);
+                        SetBtn(button.status, target_device, 7 + ((config.shiftPlusMinus) ? button_offset : 0));
                         break;
                     case STRATCOM_BUTTON_MINUS:
-                        SetBtn(button.status, target_device, 8 + button_offset);
+                        SetBtn(button.status, target_device, 8 + ((config.shiftPlusMinus) ? button_offset : 0));
                         break;
                     case STRATCOM_BUTTON_SHIFT1:
-                        SetBtn(button.status, target_device, 9 + button_offset);
+                        if(config.shiftedButtons) {
+                            button_offset = (button.status) ? 8 : 0;
+                            ResetButtons(target_device);
+                        }
+                        else {
+                            SetBtn(button.status, target_device, 25);
+                        }
                         break;
                     case STRATCOM_BUTTON_SHIFT2:
-                        SetBtn(button.status, target_device, 10 + button_offset);
+                        if(config.shiftedButtons) {
+                            button_offset = (button.status) ? 16 : 0;
+                            ResetButtons(target_device);
+                        }
+                        else {
+                            SetBtn(button.status, target_device, 26);
+                        }
                         break;
                     case STRATCOM_BUTTON_SHIFT3:
-                        SetBtn(button.status, target_device, 11 + button_offset);
+                        if(config.shiftedButtons) {
+                            button_offset = (button.status) ? 24 : 0;
+                            ResetButtons(target_device);
+                        }
+                        else {
+                            SetBtn(button.status, target_device, 27);
+                        }
                         break;
                     case STRATCOM_BUTTON_REC:
-                        // does nothing
+                        emit parent->recButtonPressed(button.status);
                         break;
                     default:
                         break;
@@ -330,6 +359,16 @@ void EventProcessor::onQuitRequested()
 void EventProcessor::onDeviceInitRequested()
 {
     pImpl_->device_error_barrier.signal();
+}
+
+void EventProcessor::setOptionShiftedButtons(bool doShiftButtons)
+{
+    pImpl_->config.shiftedButtons = doShiftButtons;
+}
+
+void EventProcessor::setOptionShiftPlusMinus(bool doShiftPlusMinus)
+{
+    pImpl_->config.shiftPlusMinus = doShiftPlusMinus;
 }
 
 EventProcessor::State EventProcessor::getState() const

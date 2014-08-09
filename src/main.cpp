@@ -23,6 +23,12 @@ int qt_main(int argc, char* argv[], EventProcessor& event_processor)
                      &ic, &TrayIcon::onDeviceError);
     QObject::connect(&event_processor, &EventProcessor::sliderPositionChanged,
                      &ic, &TrayIcon::onSliderPositionChanged);
+    QObject::connect(&event_processor, &EventProcessor::recButtonPressed,
+                     &ic, &TrayIcon::toggleOverlayDisplay);
+    QObject::connect(&ic, &TrayIcon::optionShiftedButtons,
+                     &event_processor, &EventProcessor::setOptionShiftedButtons);
+    QObject::connect(&ic, &TrayIcon::optionShiftPlusMinus,
+                     &event_processor, &EventProcessor::setOptionShiftPlusMinus);
     emit ic.deviceInitRequest();
     theApp.setQuitOnLastWindowClosed(false);
     return theApp.exec();

@@ -25,10 +25,13 @@ public:
 public slots:
     void onQuitRequested();
     void onDeviceInitRequested();
+    void setOptionShiftedButtons(bool doShiftButtons);
+    void setOptionShiftPlusMinus(bool doShiftPlusMinus);
 signals:
     void deviceInitializedSuccessfully();
     void deviceError();
     void sliderPositionChanged(int new_position);
+    void recButtonPressed(bool isPressed);
 };
 
 
