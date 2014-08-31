@@ -22,6 +22,8 @@ public:
     void initializeDevices();
     void processingLoop();
     State getState() const;
+    void writeConfigToFile(char const* filename);
+    void readConfigFromFile(char const* filename);
 public slots:
     void onQuitRequested();
     void onDeviceInitRequested();

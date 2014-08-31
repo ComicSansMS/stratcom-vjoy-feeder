@@ -3,6 +3,8 @@ project(stratcom-vjoy)
 
 cmake_minimum_required(VERSION 3.0)
 
+find_package(Boost REQUIRED)
+
 set(LIBSTRATCOM_PREFIX_PATH "" CACHE PATH "Set this to the installation directory of the libstratcom binaries")
 
 if(LIBSTRATCOM_PREFIX_PATH)
@@ -85,7 +87,7 @@ add_executable(stratcom-vjoy WIN32
     ${STRATCOM_VJOY_RESOURCE_FILES}
     ${STRATCOM_VJOY_RESOURCE_HEADER_FILES}
 )
-target_include_directories(stratcom-vjoy PUBLIC ${VJOY_INCLUDE_DIRECTORIES} ${STRATCOM_VJOY_RESOURCE_DIRECTORY})
+target_include_directories(stratcom-vjoy PUBLIC ${Boost_INCLUDE_DIRS} ${VJOY_INCLUDE_DIRECTORIES} ${STRATCOM_VJOY_RESOURCE_DIRECTORY})
 target_link_libraries(stratcom-vjoy PUBLIC stratcom ${VJOY_LIBRARIES} Qt5::Widgets Qt5::WinExtras)
 target_compile_options(stratcom-vjoy PUBLIC "/W4")
 
