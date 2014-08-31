@@ -32,12 +32,15 @@ find_package(Qt5WinExtras)
 set(STRATCOM_VJOY_SOURCE_FILES
     ${PROJECT_SOURCE_DIR}/src/main.cpp
     ${PROJECT_SOURCE_DIR}/src/Config.cpp
+    ${PROJECT_SOURCE_DIR}/src/Install.cpp
     ${PROJECT_SOURCE_DIR}/src/Log.cpp
 )
 
 set(STRATCOM_VJOY_HEADER_FILES
     ${PROJECT_SOURCE_DIR}/src/Barrier.hpp
     ${PROJECT_SOURCE_DIR}/src/Config.hpp
+    ${PROJECT_SOURCE_DIR}/src/HidRepDesc.hpp
+    ${PROJECT_SOURCE_DIR}/src/Install.hpp
     ${PROJECT_SOURCE_DIR}/src/Log.hpp
 )
 
