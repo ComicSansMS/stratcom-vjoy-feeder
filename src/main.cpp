@@ -25,6 +25,8 @@ int qt_main(int argc, char* argv[], EventProcessor& event_processor)
                      &ic, &TrayIcon::onSliderPositionChanged);
     QObject::connect(&event_processor, &EventProcessor::recButtonPressed,
                      &ic, &TrayIcon::toggleOverlayDisplay);
+    QObject::connect(&ic, &TrayIcon::optionMapToSingleDevice,
+                     &event_processor, &EventProcessor::setOptionMapToSingleDevice);
     QObject::connect(&ic, &TrayIcon::optionShiftedButtons,
                      &event_processor, &EventProcessor::setOptionShiftedButtons);
     QObject::connect(&ic, &TrayIcon::optionShiftPlusMinus,

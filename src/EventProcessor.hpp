@@ -25,6 +25,7 @@ public:
 public slots:
     void onQuitRequested();
     void onDeviceInitRequested();
+    void setOptionMapToSingleDevice(bool doMapToSingleDevice);
     void setOptionShiftedButtons(bool doShiftButtons);
     void setOptionShiftPlusMinus(bool doShiftPlusMinus);
 signals:

@@ -75,6 +75,7 @@ namespace {
 }
 
 struct Config_T {
+    std::atomic<bool> mapToSingleDevice;
     std::atomic<bool> shiftedButtons;
     std::atomic<bool> shiftPlusMinus;
     UINT vjdDeviceRangeFirst;
@@ -82,7 +83,8 @@ struct Config_T {
     std::atomic<bool> automaticRetryOnDeviceFailure;
     std::chrono::milliseconds deviceRetryTimeout;
     Config_T()
-        :shiftedButtons(false), shiftPlusMinus(false), vjdDeviceRangeFirst(1), vjdDeviceRangeLast(16),
+        :mapToSingleDevice(false), shiftedButtons(false), shiftPlusMinus(false),
+         vjdDeviceRangeFirst(1), vjdDeviceRangeLast(16),
          automaticRetryOnDeviceFailure(false), deviceRetryTimeout(2000)
     {}
 };
@@ -253,13 +255,15 @@ void EventProcessor::ProcessorImpl::processInputEvents()
                         SetBtn(button.status, target_device, 6 + button_offset);
                         break;
                     case STRATCOM_BUTTON_PLUS:
-                        SetBtn(button.status, target_device, 7 + ((config.shiftPlusMinus) ? button_offset : 0));
+                        SetBtn(button.status, target_device, 7 +
+                                ((config.mapToSingleDevice || config.shiftPlusMinus) ? button_offset : 0));
                         break;
                     case STRATCOM_BUTTON_MINUS:
-                        SetBtn(button.status, target_device, 8 + ((config.shiftPlusMinus) ? button_offset : 0));
+                        SetBtn(button.status, target_device, 8 +
+                                ((config.mapToSingleDevice || config.shiftPlusMinus) ? button_offset : 0));
                         break;
                     case STRATCOM_BUTTON_SHIFT1:
-                        if(config.shiftedButtons) {
+                        if(!config.mapToSingleDevice && config.shiftedButtons) {
                             button_offset = (button.status) ? 8 : 0;
                             ResetButtons(target_device);
                         }
@@ -268,7 +272,7 @@ void EventProcessor::ProcessorImpl::processInputEvents()
                         }
                         break;
                     case STRATCOM_BUTTON_SHIFT2:
-                        if(config.shiftedButtons) {
+                        if(!config.mapToSingleDevice && config.shiftedButtons) {
                             button_offset = (button.status) ? 16 : 0;
                             ResetButtons(target_device);
                         }
@@ -277,7 +281,7 @@ void EventProcessor::ProcessorImpl::processInputEvents()
                         }
                         break;
                     case STRATCOM_BUTTON_SHIFT3:
-                        if(config.shiftedButtons) {
+                        if(!config.mapToSingleDevice && config.shiftedButtons) {
                             button_offset = (button.status) ? 24 : 0;
                             ResetButtons(target_device);
                         }
@@ -295,10 +299,18 @@ void EventProcessor::ProcessorImpl::processInputEvents()
                 case STRATCOM_INPUT_EVENT_SLIDER:
                 {
                     auto const& slider = it->desc.slider;
-                    switch(slider.status) {
-                    case STRATCOM_SLIDER_1: target_device = rId1;  break;
-                    case STRATCOM_SLIDER_2: if(rId2) { target_device = rId2; } break;
-                    case STRATCOM_SLIDER_3: if(rId3) { target_device = rId3; } break;
+                    if(config.mapToSingleDevice) {
+                        switch(slider.status) {
+                        case STRATCOM_SLIDER_1: button_offset = 0; break;
+                        case STRATCOM_SLIDER_2: button_offset = 8; break;
+                        case STRATCOM_SLIDER_3: button_offset = 16; break;
+                        }
+                    } else {
+                        switch(slider.status) {
+                        case STRATCOM_SLIDER_1: target_device = rId1;  break;
+                        case STRATCOM_SLIDER_2: if(rId2) { target_device = rId2; } break;
+                        case STRATCOM_SLIDER_3: if(rId3) { target_device = rId3; } break;
+                        }
                     }
                     emit parent->sliderPositionChanged(slider.status);
                     ResetButtons(rId1);
@@ -378,6 +390,11 @@ void EventProcessor::onQuitRequested()
 void EventProcessor::onDeviceInitRequested()
 {
     pImpl_->device_error_barrier.signal();
+}
+
+void EventProcessor::setOptionMapToSingleDevice(bool doMapToSingleDevice)
+{
+    pImpl_->config.mapToSingleDevice = doMapToSingleDevice;
 }
 
 void EventProcessor::setOptionShiftedButtons(bool doShiftButtons)

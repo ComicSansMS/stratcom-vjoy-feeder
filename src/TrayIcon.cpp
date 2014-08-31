@@ -8,8 +8,8 @@
 
 TrayIcon::TrayIcon(QApplication& the_app, QObject* parent)
     :QSystemTrayIcon(parent), m_theApp(&the_app), m_contextMenu(std::make_unique<QMenu>()), m_actionQuit(nullptr),
-     m_actionShiftButtons(nullptr), m_actionShiftPlusMinus(nullptr), m_overlayWidget(nullptr),
-     m_iconProvider(std::make_unique<IconProvider>())
+     m_actionMapToSingleDevice(nullptr), m_actionShiftButtons(nullptr), m_actionShiftPlusMinus(nullptr),
+     m_overlayWidget(nullptr), m_iconProvider(std::make_unique<IconProvider>())
 {
     createActions();
     createMenu();
@@ -38,6 +38,13 @@ void TrayIcon::toggleOverlayDisplay(bool doShow)
     }
 }
 
+void TrayIcon::setOptionMapToSingleDevice(bool doMapToSingleDevice)
+{
+    m_actionShiftButtons->setEnabled(!doMapToSingleDevice);
+    m_actionShiftPlusMinus->setEnabled(!doMapToSingleDevice && m_actionShiftButtons->isChecked());
+    emit optionMapToSingleDevice(doMapToSingleDevice);
+}
+
 void TrayIcon::setOptionShiftedButtons(bool doShiftedButtons)
 {
     m_actionShiftPlusMinus->setEnabled(doShiftedButtons);
@@ -60,6 +67,11 @@ void TrayIcon::createActions()
     m_actionQuit = new QAction("Quit", this);
     connect(m_actionQuit, SIGNAL(triggered()), this, SLOT(onQuitRequested()));
 
+    m_actionMapToSingleDevice = new QAction("Map to single device", this);
+    m_actionMapToSingleDevice->setCheckable(true);
+    m_actionMapToSingleDevice->setChecked(false);
+    connect(m_actionMapToSingleDevice, &QAction::toggled, this, &TrayIcon::setOptionMapToSingleDevice);
+
     m_actionShiftButtons = new QAction("Use Shift Buttons", this);
     m_actionShiftButtons->setCheckable(true);
     m_actionShiftButtons->setChecked(false);
@@ -80,6 +92,8 @@ void TrayIcon::createActions()
 void TrayIcon::createMenu()
 {
     m_contextMenu->addAction(m_actionRetryDeviceInit);
+    m_contextMenu->addSeparator();
+    m_contextMenu->addAction(m_actionMapToSingleDevice);
     m_contextMenu->addSeparator();
     m_contextMenu->addAction(m_actionShiftButtons);
     m_contextMenu->addAction(m_actionShiftPlusMinus);

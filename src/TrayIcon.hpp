@@ -22,12 +22,14 @@ public slots:
     void onDeviceError();
     void onSliderPositionChanged(int new_position);
     void toggleOverlayDisplay(bool doShow);
+    void setOptionMapToSingleDevice(bool doMapToSingleDevice);
     void setOptionShiftedButtons(bool doShiftedButtons);
     void setOptionShiftPlusMinus(bool doShiftPlusMinus);
     void onRetryDeviceInit();
 signals:
     void quitRequestReceived();
     void deviceInitRequest();
+    void optionMapToSingleDevice(bool doMapToSingleDevice);
     void optionShiftedButtons(bool doShiftedButtons);
     void optionShiftPlusMinus(bool doShiftPlusMinus);
 private:
@@ -37,6 +39,7 @@ private:
     QApplication* m_theApp;
     std::unique_ptr<QMenu> m_contextMenu;
     QAction* m_actionQuit;
+    QAction* m_actionMapToSingleDevice;
     QAction* m_actionShiftButtons;
     QAction* m_actionShiftPlusMinus;
     QAction* m_actionRetryDeviceInit;
