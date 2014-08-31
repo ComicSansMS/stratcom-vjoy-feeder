@@ -1,5 +1,6 @@
 
 #include "Config.hpp"
+#include "Log.hpp"
 
 #include <boost/property_tree/ini_parser.hpp>
 #include <boost/property_tree/ptree.hpp>
@@ -23,7 +24,11 @@ void serialize(Config_T const& cfg, std::ostream& os)
     pt.put("Config.LargestVJoyDeviceId", cfg.vjdDeviceRangeLast);
     pt.put("Config.AutomaticRetryOnDeviceFailure", cfg.automaticRetryOnDeviceFailure);
     pt.put("Config.TimeIntervalForAutomaticRetryMilliseconds", cfg.deviceRetryTimeout.count());
-    boost::property_tree::write_ini(os, pt);
+    try {
+        boost::property_tree::write_ini(os, pt);
+    } catch(boost::property_tree::ini_parser_error& e) {
+        LOG("Error writing config to file: " << e.message());
+    }
 }
 
 template<typename T>
@@ -36,7 +41,12 @@ Config_T deserialize(std::istream& is)
 {
     Config_T cfg;
     boost::property_tree::ptree pt;
-    boost::property_tree::read_ini(is, pt);
+    try {
+        boost::property_tree::read_ini(is, pt);
+    } catch(boost::property_tree::ini_parser_error& e) {
+        LOG("Error in config file at line " << e.line() << ": " << e.message());
+        return cfg;
+    }
     read_cfg_value(pt, "Config.MapAllSlidersToSingleDevice", cfg.mapToSingleDevice);
     read_cfg_value(pt, "Config.ShiftedButtons", cfg.shiftedButtons);
     read_cfg_value(pt, "Config.ShiftPlusMinusButtons", cfg.shiftPlusMinus);

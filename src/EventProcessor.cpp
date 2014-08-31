@@ -435,6 +435,9 @@ void EventProcessor::writeConfigToFile(char const* filename)
     LOG("Attempting to save config to file " << filename);
     std::ofstream fout(filename);
     serialize(cfg, fout);
+    if(!fout) {
+        LOG("Error writing to config file.");
+    }
 }
 
 void EventProcessor::readConfigFromFile(char const* filename)
