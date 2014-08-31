@@ -1,8 +1,8 @@
 #ifndef STRATCOM_VJOY_INCLUDE_GUARD_LOG_HPP_
 #define STRATCOM_VJOY_INCLUDE_GUARD_LOG_HPP_
 
-#include <iosfwd>
 #include <memory>
+#include <ostream>
 
 class Logger {
 private:
