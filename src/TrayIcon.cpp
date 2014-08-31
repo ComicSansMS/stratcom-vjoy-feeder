@@ -67,7 +67,7 @@ void TrayIcon::createActions()
     m_actionQuit = new QAction("Quit", this);
     connect(m_actionQuit, SIGNAL(triggered()), this, SLOT(onQuitRequested()));
 
-    m_actionMapToSingleDevice = new QAction("Map to single device", this);
+    m_actionMapToSingleDevice = new QAction("Map Sliders to Single Device", this);
     m_actionMapToSingleDevice->setCheckable(true);
     m_actionMapToSingleDevice->setChecked(false);
     connect(m_actionMapToSingleDevice, &QAction::toggled, this, &TrayIcon::setOptionMapToSingleDevice);

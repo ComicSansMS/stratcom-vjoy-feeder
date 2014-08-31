@@ -14,6 +14,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <mutex>
 #include <tuple>
 
 namespace {
@@ -75,12 +76,12 @@ namespace {
 }
 
 struct Config_T {
-    std::atomic<bool> mapToSingleDevice;
-    std::atomic<bool> shiftedButtons;
-    std::atomic<bool> shiftPlusMinus;
+    bool mapToSingleDevice;
+    bool shiftedButtons;
+    bool shiftPlusMinus;
     UINT vjdDeviceRangeFirst;
     UINT vjdDeviceRangeLast;
-    std::atomic<bool> automaticRetryOnDeviceFailure;
+    bool automaticRetryOnDeviceFailure;
     std::chrono::milliseconds deviceRetryTimeout;
     Config_T()
         :mapToSingleDevice(false), shiftedButtons(false), shiftPlusMinus(false),
@@ -98,7 +99,9 @@ struct EventProcessor::ProcessorImpl
     std::atomic<bool> quit_requested;
     EventProcessor* parent;
     Barrier device_error_barrier;
+    std::mutex config_mutex;
     Config_T config;
+    bool configWasChanged;
 
     ProcessorImpl(EventProcessor*);
     ~ProcessorImpl();
@@ -109,7 +112,7 @@ struct EventProcessor::ProcessorImpl
 };
 
 EventProcessor::ProcessorImpl::ProcessorImpl(EventProcessor* n_parent)
-    :stratcom(nullptr), rId1(0), rId2(0), rId3(0), quit_requested(false), parent(n_parent)
+    :stratcom(nullptr), rId1(0), rId2(0), rId3(0), quit_requested(false), parent(n_parent), configWasChanged(false)
 {
     stratcom_init();
 }
@@ -200,6 +203,113 @@ void EventProcessor::ProcessorImpl::requestTerminationProcessLoop()
     quit_requested.store(true);
 }
 
+void feedInputToVJoy(Config_T const& cfg, stratcom_input_event* input_events, UINT rId1, UINT rId2, UINT rId3,
+                     UINT& target_device, UCHAR& button_offset, EventProcessor* parent)
+{
+    for(auto it = input_events; it != nullptr; it = it->next) {
+        switch(it->type) {
+        case STRATCOM_INPUT_EVENT_BUTTON:
+        {
+            auto const& button = it->desc.button;
+            switch(button.button) {
+            case STRATCOM_BUTTON_1:
+                SetBtn(button.status, target_device, 1 + button_offset);
+                break;
+            case STRATCOM_BUTTON_2:
+                SetBtn(button.status, target_device, 2 + button_offset);
+                break;
+            case STRATCOM_BUTTON_3:
+                SetBtn(button.status, target_device, 3 + button_offset);
+                break;
+            case STRATCOM_BUTTON_4:
+                SetBtn(button.status, target_device, 4 + button_offset);
+                break;
+            case STRATCOM_BUTTON_5:
+                SetBtn(button.status, target_device, 5 + button_offset);
+                break;
+            case STRATCOM_BUTTON_6:
+                SetBtn(button.status, target_device, 6 + button_offset);
+                break;
+            case STRATCOM_BUTTON_PLUS:
+                SetBtn(button.status, target_device, 7 +
+                    ((cfg.mapToSingleDevice || cfg.shiftPlusMinus) ? button_offset : 0));
+                break;
+            case STRATCOM_BUTTON_MINUS:
+                SetBtn(button.status, target_device, 8 +
+                    ((cfg.mapToSingleDevice || cfg.shiftPlusMinus) ? button_offset : 0));
+                break;
+            case STRATCOM_BUTTON_SHIFT1:
+                if(!cfg.mapToSingleDevice && cfg.shiftedButtons) {
+                    button_offset = (button.status) ? 8 : 0;
+                    ResetButtons(target_device);
+                } else {
+                    SetBtn(button.status, target_device, 25);
+                }
+                break;
+            case STRATCOM_BUTTON_SHIFT2:
+                if(!cfg.mapToSingleDevice && cfg.shiftedButtons) {
+                    button_offset = (button.status) ? 16 : 0;
+                    ResetButtons(target_device);
+                } else {
+                    SetBtn(button.status, target_device, 26);
+                }
+                break;
+            case STRATCOM_BUTTON_SHIFT3:
+                if(!cfg.mapToSingleDevice && cfg.shiftedButtons) {
+                    button_offset = (button.status) ? 24 : 0;
+                    ResetButtons(target_device);
+                } else {
+                    SetBtn(button.status, target_device, 27);
+                }
+                break;
+            case STRATCOM_BUTTON_REC:
+                emit parent->recButtonPressed(button.status);
+                break;
+            default:
+                break;
+            }
+        } break;
+        case STRATCOM_INPUT_EVENT_SLIDER:
+        {
+            auto const& slider = it->desc.slider;
+            if(cfg.mapToSingleDevice) {
+                switch(slider.status) {
+                case STRATCOM_SLIDER_1: button_offset = 0; break;
+                case STRATCOM_SLIDER_2: button_offset = 8; break;
+                case STRATCOM_SLIDER_3: button_offset = 16; break;
+                }
+            } else {
+                switch(slider.status) {
+                case STRATCOM_SLIDER_1: target_device = rId1;  break;
+                case STRATCOM_SLIDER_2: if(rId2) { target_device = rId2; } break;
+                case STRATCOM_SLIDER_3: if(rId3) { target_device = rId3; } break;
+                }
+            }
+            emit parent->sliderPositionChanged(slider.status);
+            ResetButtons(rId1);
+            if(rId2) { ResetButtons(rId2); }
+            if(rId3) { ResetButtons(rId3); }
+        } break;
+        case STRATCOM_INPUT_EVENT_AXIS:
+        {
+            auto const& axis = it->desc.axis;
+            LONG axis_value = (axis.status + 512) * 32;
+            switch(axis.axis) {
+            case STRATCOM_AXIS_X:
+                SetAxis(axis_value, rId1, HID_USAGE_X);
+                break;
+            case STRATCOM_AXIS_Y:
+                SetAxis(axis_value, rId1, HID_USAGE_Y);
+                break;
+            case STRATCOM_AXIS_Z:
+                SetAxis(axis_value, rId1, HID_USAGE_Z);
+                break;
+            }
+        } break;
+        }
+    }
+}
+
 void EventProcessor::ProcessorImpl::processInputEvents()
 {
     auto check = [](stratcom_return ret) {
@@ -230,111 +340,22 @@ void EventProcessor::ProcessorImpl::processInputEvents()
             }
             auto input_events = stratcom_create_input_events_from_states(&old_input_state, &current_input_state);
 
-            for(auto it = input_events; it != nullptr; it = it->next) {
-                switch(it->type) {
-                case STRATCOM_INPUT_EVENT_BUTTON:
-                {
-                    auto const& button = it->desc.button;
-                    switch(button.button) {
-                    case STRATCOM_BUTTON_1:
-                        SetBtn(button.status, target_device, 1 + button_offset);
-                        break;
-                    case STRATCOM_BUTTON_2:
-                        SetBtn(button.status, target_device, 2 + button_offset);
-                        break;
-                    case STRATCOM_BUTTON_3:
-                        SetBtn(button.status, target_device, 3 + button_offset);
-                        break;
-                    case STRATCOM_BUTTON_4:
-                        SetBtn(button.status, target_device, 4 + button_offset);
-                        break;
-                    case STRATCOM_BUTTON_5:
-                        SetBtn(button.status, target_device, 5 + button_offset);
-                        break;
-                    case STRATCOM_BUTTON_6:
-                        SetBtn(button.status, target_device, 6 + button_offset);
-                        break;
-                    case STRATCOM_BUTTON_PLUS:
-                        SetBtn(button.status, target_device, 7 +
-                                ((config.mapToSingleDevice || config.shiftPlusMinus) ? button_offset : 0));
-                        break;
-                    case STRATCOM_BUTTON_MINUS:
-                        SetBtn(button.status, target_device, 8 +
-                                ((config.mapToSingleDevice || config.shiftPlusMinus) ? button_offset : 0));
-                        break;
-                    case STRATCOM_BUTTON_SHIFT1:
-                        if(!config.mapToSingleDevice && config.shiftedButtons) {
-                            button_offset = (button.status) ? 8 : 0;
-                            ResetButtons(target_device);
-                        }
-                        else {
-                            SetBtn(button.status, target_device, 25);
-                        }
-                        break;
-                    case STRATCOM_BUTTON_SHIFT2:
-                        if(!config.mapToSingleDevice && config.shiftedButtons) {
-                            button_offset = (button.status) ? 16 : 0;
-                            ResetButtons(target_device);
-                        }
-                        else {
-                            SetBtn(button.status, target_device, 26);
-                        }
-                        break;
-                    case STRATCOM_BUTTON_SHIFT3:
-                        if(!config.mapToSingleDevice && config.shiftedButtons) {
-                            button_offset = (button.status) ? 24 : 0;
-                            ResetButtons(target_device);
-                        }
-                        else {
-                            SetBtn(button.status, target_device, 27);
-                        }
-                        break;
-                    case STRATCOM_BUTTON_REC:
-                        emit parent->recButtonPressed(button.status);
-                        break;
-                    default:
-                        break;
-                    }
-                } break;
-                case STRATCOM_INPUT_EVENT_SLIDER:
-                {
-                    auto const& slider = it->desc.slider;
-                    if(config.mapToSingleDevice) {
-                        switch(slider.status) {
-                        case STRATCOM_SLIDER_1: button_offset = 0; break;
-                        case STRATCOM_SLIDER_2: button_offset = 8; break;
-                        case STRATCOM_SLIDER_3: button_offset = 16; break;
-                        }
-                    } else {
-                        switch(slider.status) {
-                        case STRATCOM_SLIDER_1: target_device = rId1;  break;
-                        case STRATCOM_SLIDER_2: if(rId2) { target_device = rId2; } break;
-                        case STRATCOM_SLIDER_3: if(rId3) { target_device = rId3; } break;
-                        }
-                    }
-                    emit parent->sliderPositionChanged(slider.status);
-                    ResetButtons(rId1);
-                    if(rId2) { ResetButtons(rId2); }
-                    if(rId3) { ResetButtons(rId3); }
-                } break;
-                case STRATCOM_INPUT_EVENT_AXIS:
-                {
-                    auto const& axis = it->desc.axis;
-                    LONG axis_value = (axis.status + 512) * 32;
-                    switch(axis.axis) {
-                    case STRATCOM_AXIS_X:
-                        SetAxis(axis_value, rId1, HID_USAGE_X);
-                        break;
-                    case STRATCOM_AXIS_Y:
-                        SetAxis(axis_value, rId1, HID_USAGE_Y);
-                        break;
-                    case STRATCOM_AXIS_Z:
-                        SetAxis(axis_value, rId1, HID_USAGE_Z);
-                        break;
-                    }
-                } break;
-                }
+            Config_T cfg;
+            bool cfg_was_changed;
+            {
+                std::lock_guard<std::mutex> lk(config_mutex);
+                cfg = config;
+                cfg_was_changed = configWasChanged;
+                configWasChanged = false;
             }
+            if(cfg_was_changed) {
+                ResetButtons(rId1);
+                if(rId2) { ResetButtons(rId2); }
+                if(rId3) { ResetButtons(rId3); }
+            }
+
+            feedInputToVJoy(cfg, input_events, rId1, rId2, rId3, target_device, button_offset, parent);
+
             stratcom_free_input_events(input_events);
             old_input_state = current_input_state;
         }
@@ -394,17 +415,23 @@ void EventProcessor::onDeviceInitRequested()
 
 void EventProcessor::setOptionMapToSingleDevice(bool doMapToSingleDevice)
 {
+    std::lock_guard<std::mutex> lk(pImpl_->config_mutex);
     pImpl_->config.mapToSingleDevice = doMapToSingleDevice;
+    pImpl_->configWasChanged = true;
 }
 
 void EventProcessor::setOptionShiftedButtons(bool doShiftButtons)
 {
+    std::lock_guard<std::mutex> lk(pImpl_->config_mutex);
     pImpl_->config.shiftedButtons = doShiftButtons;
+    pImpl_->configWasChanged = true;
 }
 
 void EventProcessor::setOptionShiftPlusMinus(bool doShiftPlusMinus)
 {
+    std::lock_guard<std::mutex> lk(pImpl_->config_mutex);
     pImpl_->config.shiftPlusMinus = doShiftPlusMinus;
+    pImpl_->configWasChanged = true;
 }
 
 EventProcessor::State EventProcessor::getState() const
