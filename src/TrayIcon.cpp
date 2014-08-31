@@ -47,7 +47,7 @@ void TrayIcon::setOptionMapToSingleDevice(bool doMapToSingleDevice)
 
 void TrayIcon::setOptionShiftedButtons(bool doShiftedButtons)
 {
-    m_actionShiftPlusMinus->setEnabled(doShiftedButtons);
+    m_actionShiftPlusMinus->setEnabled(!m_actionMapToSingleDevice->isChecked() && doShiftedButtons);
     emit optionShiftedButtons(doShiftedButtons);
 }
 
@@ -60,6 +60,13 @@ void TrayIcon::onRetryDeviceInit()
 {
     m_actionRetryDeviceInit->setEnabled(false);
     emit deviceInitRequest();
+}
+
+void TrayIcon::onConfigChange(Config_T config)
+{
+    m_actionMapToSingleDevice->setChecked(config.mapToSingleDevice);
+    m_actionShiftButtons->setChecked(config.shiftedButtons);
+    m_actionShiftPlusMinus->setChecked(config.shiftPlusMinus);
 }
 
 void TrayIcon::createActions()

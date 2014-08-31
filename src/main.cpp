@@ -1,5 +1,6 @@
 
 #include <QApplication>
+#include <QDir>
 
 #include <thread>
 
@@ -8,6 +9,10 @@
 #include "TrayIcon.hpp"
 
 #include <Windows.h>
+
+namespace {
+    QByteArray g_ConfigFilePath;
+}
 
 int qt_main(int argc, char* argv[], EventProcessor& event_processor)
 {
@@ -31,6 +36,12 @@ int qt_main(int argc, char* argv[], EventProcessor& event_processor)
                      &event_processor, &EventProcessor::setOptionShiftedButtons);
     QObject::connect(&ic, &TrayIcon::optionShiftPlusMinus,
                      &event_processor, &EventProcessor::setOptionShiftPlusMinus);
+    QObject::connect(&event_processor, &EventProcessor::configChanged,
+                     &ic, &TrayIcon::onConfigChange);
+
+    g_ConfigFilePath = QCoreApplication::applicationDirPath().append("/stratcom_vjoy_feeder_config.ini").toLocal8Bit();
+    event_processor.readConfigFromFile(g_ConfigFilePath.data());
+
     emit ic.deviceInitRequest();
     theApp.setQuitOnLastWindowClosed(false);
     return theApp.exec();
@@ -43,6 +54,11 @@ int main(int argc, char* argv[])
     std::thread t1([&proc]() { proc.processingLoop(); });
     qt_main(argc, argv, proc);
     t1.join();
+
+    if(g_ConfigFilePath.count() != 0) {
+        proc.writeConfigToFile(g_ConfigFilePath.data());
+    }
+
     LOG("Shutdown completed.");
     return 0;
 }

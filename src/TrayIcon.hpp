@@ -1,6 +1,7 @@
 #ifndef STRATCOM_VJOY_INCLUDE_GUARD_TRAY_ICON_HPP_
 #define STRATCOM_VJOY_INCLUDE_GUARD_TRAY_ICON_HPP_
 
+#include "Config.hpp"
 #include "IconProvider.hpp"
 
 #include <QSystemTrayIcon>
@@ -26,6 +27,7 @@ public slots:
     void setOptionShiftedButtons(bool doShiftedButtons);
     void setOptionShiftPlusMinus(bool doShiftPlusMinus);
     void onRetryDeviceInit();
+    void onConfigChange(Config_T config);
 signals:
     void quitRequestReceived();
     void deviceInitRequest();

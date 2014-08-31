@@ -1,6 +1,8 @@
 #ifndef STRATCOM_VJOY_INCLUDE_GUARD_EVENT_PROCESSOR_HPP_
 #define STRATCOM_VJOY_INCLUDE_GUARD_EVENT_PROCESSOR_HPP_
 
+#include "Config.hpp"
+
 #include <QObject>
 
 #include <memory>
@@ -31,6 +33,7 @@ public slots:
     void setOptionShiftedButtons(bool doShiftButtons);
     void setOptionShiftPlusMinus(bool doShiftPlusMinus);
 signals:
+    void configChanged(Config_T config);
     void deviceInitializedSuccessfully();
     void deviceError();
     void sliderPositionChanged(int new_position);

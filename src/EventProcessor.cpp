@@ -1,7 +1,6 @@
 #include "EventProcessor.hpp"
 
 #include "Barrier.hpp"
-#include "Config.hpp"
 #include "Log.hpp"
 
 #define WIN32_LEAN_AND_MEAN
@@ -447,4 +446,5 @@ void EventProcessor::readConfigFromFile(char const* filename)
         std::lock_guard<std::mutex> lk(pImpl_->config_mutex);
         pImpl_->config = cfg;
     }
+    emit configChanged(cfg);
 }
