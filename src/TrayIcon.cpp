@@ -120,6 +120,7 @@ void TrayIcon::onDeviceInitializedSuccessfully()
     showMessage("Stratcom VJoy-Feeder", "Stratcom VJoy-Feeder is running.");
     m_actionRetryDeviceInit->setEnabled(false);
     m_actionRetryDeviceInit->setVisible(false);
+    m_actionMapToSingleDevice->setVisible(true);
     m_actionShiftButtons->setVisible(true);
     m_actionShiftPlusMinus->setVisible(true);
     setIcon(m_iconProvider->getIcon(IconProvider::ICON_APPLICATION));
@@ -128,6 +129,7 @@ void TrayIcon::onDeviceInitializedSuccessfully()
 void TrayIcon::onDeviceError()
 {
     showMessage("Stratcom VJoy-Feeder", "Device error.", Warning);
+    m_actionMapToSingleDevice->setVisible(false);
     m_actionShiftButtons->setVisible(false);
     m_actionShiftPlusMinus->setVisible(false);
     m_actionRetryDeviceInit->setEnabled(true);
