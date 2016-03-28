@@ -80,6 +80,40 @@ void elevateProcess()
     }
 }
 
+void addVJoyDeviceToRegistry(int device_id, char const* descriptor, int descriptor_size)
+{
+    std::string const device_name = std::string("AADevice") +
+                                    ((device_id < 10) ? "0" : "") + std::to_string(device_id);
+    std::string device_key_path = std::string(VJOY_DEVICE_REGISTRY_BASE) + "\\" + device_name;
+    HKEY device_key;
+    DWORD disp;
+    auto res = RegCreateKeyEx(HKEY_LOCAL_MACHINE, device_key_path.c_str(), 0, nullptr, 0, KEY_ALL_ACCESS,
+                                nullptr, &device_key, &disp);
+    if(res == ERROR_SUCCESS) {
+        std::unique_ptr<HKEY, void(*)(HKEY*)> guard_device_key(&device_key, [](HKEY* p) { RegCloseKey(*p); });
+        if(disp == REG_CREATED_NEW_KEY) {
+            DWORD const desc_size = descriptor_size;
+            res = RegSetValueEx(device_key, HID_REP_DESC_VALUE, 0, REG_BINARY,
+                                reinterpret_cast<BYTE const*>(descriptor),
+                                desc_size);
+            if(res != ERROR_SUCCESS) {
+                LOG("Error writing device descriptor to registry");
+            }
+            res = RegSetValueEx(device_key, HID_REP_DESC_SIZE_VALUE, 0, REG_DWORD,
+                                reinterpret_cast<BYTE const*>(&desc_size),
+                                sizeof(DWORD));
+            if(res != ERROR_SUCCESS) {
+                LOG("Error writing device descriptor size to registry");
+            }
+        } else {
+            LOG("Warning! Registry key overwrite detected - aborting");
+        }
+    } else {
+        LOG("Error creating new registry key for device");
+    }
+    LOG("Created new VJoy device #" << device_id << ".");
+}
+
 void updateRegistry()
 {
     HKEY vjoy_base;
@@ -112,40 +146,22 @@ void updateRegistry()
     }
     if((largest_installed_device >= 0) && (largest_installed_device < 16))
     {
-        std::string const device_name = std::string("AADevice") +
-            ((largest_installed_device < 10) ? "0" : "") +
-            std::to_string(largest_installed_device);
-        std::string device_key_path = std::string(VJOY_DEVICE_REGISTRY_BASE) + "\\" + device_name;
-        HKEY device_key;
-        DWORD disp;
-        auto res = RegCreateKeyEx(HKEY_LOCAL_MACHINE, device_key_path.c_str(), 0, nullptr, 0, KEY_ALL_ACCESS,
-                                  nullptr, &device_key, &disp);
-        if(res == ERROR_SUCCESS) {
-            std::unique_ptr<HKEY, void(*)(HKEY*)> guard_device_key(&device_key, [](HKEY* p) { RegCloseKey(*p); });
-            if(disp == REG_CREATED_NEW_KEY) {
-                DWORD desc_size = sizeof(HidRepDesc::hid_3Axis_32Buttons);
-                res = RegSetValueEx(device_key, HID_REP_DESC_VALUE, 0, REG_BINARY,
-                                    reinterpret_cast<BYTE const*>(HidRepDesc::hid_3Axis_32Buttons),
-                                    desc_size);
-                if(res != ERROR_SUCCESS) {
-                    LOG("Error writing device descriptor to registry");
-                }
-                res = RegSetValueEx(device_key, HID_REP_DESC_SIZE_VALUE, 0, REG_DWORD,
-                                    reinterpret_cast<BYTE const*>(&desc_size),
-                                    sizeof(DWORD));
-                if(res != ERROR_SUCCESS) {
-                    LOG("Error writing device descriptor size to registry");
-                }
-            } else {
-                LOG("Warning! Registry key overwrite detected - aborting");
-            }
-        } else {
-            LOG("Error creating new registry key for device");
+        addVJoyDeviceToRegistry(largest_installed_device,
+                                HidRepDesc::hid_3Axis_32Buttons,
+                                sizeof(HidRepDesc::hid_3Axis_32Buttons));
+        if (largest_installed_device + 3 < 16)
+        {
+            addVJoyDeviceToRegistry(largest_installed_device + 1,
+                                    HidRepDesc::hid_32Buttons,
+                                    sizeof(HidRepDesc::hid_32Buttons));
+            addVJoyDeviceToRegistry(largest_installed_device + 2,
+                                    HidRepDesc::hid_32Buttons,
+                                    sizeof(HidRepDesc::hid_32Buttons));
         }
     }
 }
 
-void locateVJoyInstallDll()
+void locateVJoyInstallDllAndInstall()
 {
     for(int i=0; dll_locations[i]; ++i)
     {
@@ -163,7 +179,9 @@ void locateVJoyInstallDll()
                 {
                     LOG("Successfully loaded vJoyInstall from " << dll_path.c_str());
                     updateRegistry();
+                    LOG("Reloading VJoy driver.");
                     refresh_vjoy();
+                    LOG("Installation complete.");
                     return;
                 }
             }
@@ -172,8 +190,12 @@ void locateVJoyInstallDll()
     LOG("Unable to locate vJoyInstall");
 }
 
-void foo()
+void installVJoyDevices()
 {
-    locateVJoyInstallDll();
+    if(!isRunningAsAdmin()) {
+        elevateProcess();
+    }
+
+    locateVJoyInstallDllAndInstall();
 }
 
