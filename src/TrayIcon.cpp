@@ -3,7 +3,6 @@
 #include <QApplication>
 #include <QMessageBox>
 
-
 #include <QWidget>
 
 TrayIcon::TrayIcon(QApplication& the_app, QObject* parent)
@@ -74,6 +73,9 @@ void TrayIcon::createActions()
     m_actionQuit = new QAction("Quit", this);
     connect(m_actionQuit, SIGNAL(triggered()), this, SLOT(onQuitRequested()));
 
+    m_actionAbout = new QAction("About...", this);
+    connect(m_actionAbout, SIGNAL(triggered()), this, SLOT(onAboutClicked()));
+
     m_actionMapToSingleDevice = new QAction("Map Sliders to Single Device", this);
     m_actionMapToSingleDevice->setCheckable(true);
     m_actionMapToSingleDevice->setChecked(false);
@@ -105,6 +107,8 @@ void TrayIcon::createMenu()
     m_contextMenu->addAction(m_actionShiftButtons);
     m_contextMenu->addAction(m_actionShiftPlusMinus);
     m_contextMenu->addSeparator();
+    m_contextMenu->addAction(m_actionAbout);
+    m_contextMenu->addSeparator();
     m_contextMenu->addAction(m_actionQuit);
     setContextMenu(m_contextMenu.get());
 }
@@ -113,6 +117,21 @@ void TrayIcon::onQuitRequested()
 {
     emit quitRequestReceived();
     m_theApp->quit();
+}
+
+void TrayIcon::onAboutClicked()
+{
+    QMessageBox msgbox;
+    msgbox.setWindowTitle("Stratcom VJoy Feeder");
+    msgbox.setText("Stratcom VJoy Feeder\n(C) 2014-2016 Andreas Weis\nhttp://www.ghulbus-inc.de/\n\nLicensed under GPL v3.\n\n"
+                   "This software was built using Qt5 (http://www.qt.io/).\n");
+    msgbox.setStandardButtons(QMessageBox::Ok);
+    msgbox.addButton("About Qt...", QMessageBox::YesRole);
+    msgbox.setDefaultButton(QMessageBox::Ok);
+    auto const res = msgbox.exec();
+    if (res != QMessageBox::Ok) {
+        QMessageBox::aboutQt(nullptr);
+    }
 }
 
 void TrayIcon::onDeviceInitializedSuccessfully()

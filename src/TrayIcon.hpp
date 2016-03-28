@@ -18,6 +18,7 @@ public:
     ~TrayIcon();
 public slots:
     void onQuitRequested();
+    void onAboutClicked();
     void onIconClicked();
     void onDeviceInitializedSuccessfully();
     void onDeviceError();
@@ -41,6 +42,7 @@ private:
     QApplication* m_theApp;
     std::unique_ptr<QMenu> m_contextMenu;
     QAction* m_actionQuit;
+    QAction* m_actionAbout;
     QAction* m_actionMapToSingleDevice;
     QAction* m_actionShiftButtons;
     QAction* m_actionShiftPlusMinus;
