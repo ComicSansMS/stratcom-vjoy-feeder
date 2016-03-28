@@ -7,6 +7,8 @@
 
 #include <memory>
 
+/*! The EventProcessor reads input from the stratcom and forwards it to vjoy.
+ */
 class EventProcessor : public QObject
 {
     Q_OBJECT

@@ -5,7 +5,8 @@
 
 #include <vector>
 
-
+/*! Retrieves icons compiled into an exe file as resources.
+ */
 class IconProvider {
 public:
     enum IconIdentifier {
