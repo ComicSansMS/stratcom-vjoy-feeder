@@ -129,7 +129,6 @@ bool EventProcessor::ProcessorImpl::initializeStratcom()
 {
     stratcom = stratcom_open_device();
     if(!stratcom) {
-        LOG("Strategic Commander device not found.");
         return false;
     }
 
@@ -374,6 +373,7 @@ void EventProcessor::initializeDevices()
             return;
         }
         if(retryWasRequested) {
+            LOG("Error: Could not connect to Strategic Commander device.");
             emit deviceError();
         }
     }
