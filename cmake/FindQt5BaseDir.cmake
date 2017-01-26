@@ -3,28 +3,9 @@ if(WIN32)
     find_path(QT5_BASE_DIR
         NAMES "lib/cmake/Qt5"
         HINTS ENV QT5_ROOT
-        PATH_SUFFIXES "5.6/msvc2015_64"
+        PATH_SUFFIXES "5.7/msvc2015_64"
         DOC "Qt5 Root Directory"
     )
-
-    set(QT5_ADDITIONAL_DLLS
-        "${QT5_BASE_DIR}/bin/icuin54.dll"
-        "${QT5_BASE_DIR}/bin/icuuc54.dll"
-        "${QT5_BASE_DIR}/bin/icudt54.dll"
-    )
-
-    if(NOT QT5_NO_OPENGL)
-        if(CMAKE_SIZEOF_VOID_P EQUAL 8)
-            set(SEARCH_SUFFIX "Lib/x64" "Lib/win8/um/x64")
-        else()
-            set(SEARCH_SUFFIX "Lib" "Lib/win8/um/x86")
-        endif()
-        find_path(WINSDK_LIB_DIR
-            NAMES Glu32.lib
-            HINTS ENV WindowsSdkDir ENV WINSDK_ROOT
-            PATH_SUFFIXES ${SEARCH_SUFFIX}
-        )
-    endif()
 endif()
 
 

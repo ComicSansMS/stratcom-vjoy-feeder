@@ -22,8 +22,8 @@ To build Stratcom vJoy feeder from source you will need:
 - [Visual Studio 2015](https://www.visualstudio.com/en-us/products/vs-2015-product-editions.aspx)
 - [CMake](https://cmake.org/download/)
 - [Boost](http://www.boost.org/)
-- [Qt](http://www.qt.io/developers/) 5.6.0 with the Windows 64 binaries for Visual Studio 2015 ([Direct link](http://download.qt.io/official_releases/qt/5.6/5.6.0/qt-opensource-windows-x86-msvc2015_64-5.6.0.exe))
-- [libstratcom](https://github.com/ComicSansMS/libstratcom) 1.0.0 ([Direct Link](https://github.com/ComicSansMS/libstratcom/releases/download/v1.0.0/libstratcom-v1.0.0-win64.zip))
+- [Qt](http://www.qt.io/developers/) 5.7.0 with the Windows 64 binaries for Visual Studio 2015 ([Direct link](http://download.qt.io/official_releases/qt/5.7/5.7.0/qt-opensource-windows-x86-msvc2015_64-5.7.0.exe))
+- [libstratcom](https://github.com/ComicSansMS/libstratcom) 1.1.0 ([Direct Link](https://github.com/ComicSansMS/libstratcom/releases/download/v1.1.0/libstratcom-v1.1.0-win64.zip))
 - [vJoy](http://vjoystick.sourceforge.net/site/) Feeder SDK ([Direct Link](http://vjoystick.sourceforge.net/site/index.php/component/weblinks/weblink/13-uncategorised/11-redirect-vjoy2sdk?task=weblink.go))
 
 To build the application:
