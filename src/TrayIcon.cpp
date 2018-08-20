@@ -123,7 +123,7 @@ void TrayIcon::onAboutClicked()
 {
     QMessageBox msgbox;
     msgbox.setWindowTitle("Stratcom VJoy Feeder");
-    msgbox.setText("Stratcom VJoy Feeder\n(C) 2014-2016 Andreas Weis\nhttp://www.ghulbus-inc.de/\n\nLicensed under GPL v3.\n\n"
+    msgbox.setText("Stratcom VJoy Feeder\n(C) 2014-2018 Andreas Weis\nhttp://www.ghulbus-inc.de/\n\nLicensed under GPL v3.\n\n"
                    "This software was built using Qt5 (http://www.qt.io/).\n");
     msgbox.setStandardButtons(QMessageBox::Ok);
     msgbox.addButton("About Qt...", QMessageBox::YesRole);

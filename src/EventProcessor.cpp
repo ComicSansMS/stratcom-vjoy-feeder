@@ -92,7 +92,9 @@ struct EventProcessor::ProcessorImpl
     ProcessorImpl(EventProcessor*);
     ~ProcessorImpl();
     bool initializeStratcom();
+    void cleanupStratcom();
     bool initializeVJoy();
+    void cleanupVJoy();
     void processInputEvents();
     void requestTerminationProcessLoop();
 };
@@ -105,24 +107,8 @@ EventProcessor::ProcessorImpl::ProcessorImpl(EventProcessor* n_parent)
 
 EventProcessor::ProcessorImpl::~ProcessorImpl()
 {
-    if(rId1) {
-        ResetVJD(rId1);
-        RelinquishVJD(rId1);
-    }
-    if(rId2) {
-        ResetVJD(rId2);
-        RelinquishVJD(rId2);
-    }
-    if(rId3) {
-        ResetVJD(rId3);
-        RelinquishVJD(rId3);
-    }
-
-    if(stratcom) {
-        stratcom_set_button_led_state(stratcom, STRATCOM_LEDBUTTON_ALL, STRATCOM_LED_OFF);
-        stratcom_close_device(stratcom);
-        stratcom_shutdown();
-    }
+    cleanupVJoy();
+    cleanupStratcom();
 }
 
 bool EventProcessor::ProcessorImpl::initializeStratcom()
@@ -138,6 +124,15 @@ bool EventProcessor::ProcessorImpl::initializeStratcom()
         return false;
     }
     return true;
+}
+
+void EventProcessor::ProcessorImpl::cleanupStratcom()
+{
+    if(stratcom) {
+        stratcom_set_button_led_state(stratcom, STRATCOM_LEDBUTTON_ALL, STRATCOM_LED_OFF);
+        stratcom_close_device(stratcom);
+        stratcom_shutdown();
+    }
 }
 
 bool EventProcessor::ProcessorImpl::initializeVJoy()
@@ -181,6 +176,22 @@ bool EventProcessor::ProcessorImpl::initializeVJoy()
         }
     }
     return true;
+}
+
+void EventProcessor::ProcessorImpl::cleanupVJoy()
+{
+    if(rId1) {
+        ResetVJD(rId1);
+        RelinquishVJD(rId1);
+    }
+    if(rId2) {
+        ResetVJD(rId2);
+        RelinquishVJD(rId2);
+    }
+    if(rId3) {
+        ResetVJD(rId3);
+        RelinquishVJD(rId3);
+    }
 }
 
 void EventProcessor::ProcessorImpl::requestTerminationProcessLoop()
@@ -297,8 +308,10 @@ void feedInputToVJoy(Config_T const& cfg, stratcom_input_event* input_events, UI
 
 void EventProcessor::ProcessorImpl::processInputEvents()
 {
-    auto check = [](stratcom_return ret) {
+    bool device_error_occurred = false;
+    auto check = [&device_error_occurred](stratcom_return ret) {
         if(ret == STRATCOM_RET_ERROR) {
+            device_error_occurred = true;
             LOG("Error interacting with Strategic Commander device.");
             return;
         }
@@ -310,7 +323,7 @@ void EventProcessor::ProcessorImpl::processInputEvents()
     UINT target_device = rId1;
     stratcom_input_state old_input_state;
     bool first_iteration = true;
-    while(!quit_requested.load())
+    while(!quit_requested.load() && !device_error_occurred)
     {
         auto read_result = stratcom_read_input_with_timeout(stratcom, 500);
         check(read_result);
@@ -367,6 +380,9 @@ void EventProcessor::initializeDevices()
         if(pImpl_->quit_requested.load()) {
             break;
         }
+
+        pImpl_->cleanupStratcom();
+        pImpl_->cleanupVJoy();
         pImpl_->device_error_barrier.reset();
         if(pImpl_->initializeStratcom() && pImpl_->initializeVJoy()) {
             emit deviceInitializedSuccessfully();
@@ -384,6 +400,7 @@ void EventProcessor::processingLoop()
     while(!pImpl_->quit_requested.load()) {
         initializeDevices();
         pImpl_->processInputEvents();
+        if(!pImpl_->quit_requested.load()) { emit deviceError(); }
     }
 }
 
