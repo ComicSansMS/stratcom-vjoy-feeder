@@ -101,10 +101,19 @@ if(WIN32)
     file(COPY ${dll} DESTINATION ${CMAKE_BINARY_DIR})
     get_property(dll TARGET stratcom PROPERTY IMPORTED_LOCATION_RELEASE)
     file(COPY ${dll} DESTINATION ${CMAKE_BINARY_DIR})
-    
+
     file(COPY ${VJOY_DLLS} DESTINATION ${PROJECT_BINARY_DIR})
-    
+
     getQt5Dlls(Qt5::Widgets qt_DLLS)
     getQt5Dlls(Qt5::WinExtras qt_DLLS)
     file(COPY ${qt_DLLS} ${QT5_ADDITIONAL_DLLS} DESTINATION ${PROJECT_BINARY_DIR})
+endif()
+
+install(TARGETS stratcom-vjoy DESTINATION .)
+install(FILES $<TARGET_PDB_FILE:stratcom-vjoy> DESTINATION . OPTIONAL)
+if(WIN32)
+    install(FILES ${dll} ${VJOY_DLLS} DESTINATION .)
+    find_program(QT5_WINDEPLOYQT windeployqt HINTS ${QT5_BASE_DIR} PATH_SUFFIXES bin)
+    mark_as_advanced(QT5_WINDEPLOYQT)
+    install(SCRIPT CODE "execute_process(COMMAND ${QT5_WINDEPLOYQT} ${CMAKE_INSTALL_PREFIX})")
 endif()
