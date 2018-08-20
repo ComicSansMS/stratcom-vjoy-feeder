@@ -3,7 +3,7 @@ if(WIN32)
     find_path(QT5_BASE_DIR
         NAMES "lib/cmake/Qt5"
         HINTS ENV QT5_ROOT
-        PATH_SUFFIXES "5.7/msvc2015_64"
+        PATH_SUFFIXES "5.7/msvc2015_64" "5.11.1/msvc2017_64"
         DOC "Qt5 Root Directory"
     )
 endif()
